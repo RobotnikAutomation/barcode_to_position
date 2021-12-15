@@ -1,0 +1,10 @@
+barcodes:
+  -
+    barcode_pos: [0.0, 1.0]
+    initial_real_pos: 0.0 # Offset to apply to the barcode position (meters)
+  -
+    barcode_pos: [1.2, 2.2]
+    initial_real_pos: 1.5
+  -
+    barcode_pos: [2.4, 3.4]
+    initial_real_pos: 3.0
