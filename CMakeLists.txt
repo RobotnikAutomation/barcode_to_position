@@ -7,7 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   std_srvs
-  geometry_msgs
+  nav_msgs
   rcomponent
 )
 
@@ -21,7 +21,7 @@ catkin_package(
     rospy
     std_msgs
     std_srvs
-    geometry_msgs
+    nav_msgs
     rcomponent
   DEPENDS
 )

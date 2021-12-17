@@ -10,7 +10,7 @@ import yaml
 from std_msgs.msg import String
 from robotnik_msgs.msg import StringStamped
 from robotnik_msgs.msg import Registers
-from geometry_msgs.msg import PointStamped
+from nav_msgs.msg import Odometry
 
 
 class BarcodeToPosition(RComponent):
@@ -42,7 +42,7 @@ class BarcodeToPosition(RComponent):
         self.status_stamped_pub = rospy.Publisher(
             '~status_stamped', StringStamped, queue_size=10)
         self.position_pub = rospy.Publisher(
-            '~barcode_scan_position', PointStamped, queue_size=10)
+            '~barcode_scan_position', Odometry, queue_size=10)
 
         # Subscriber
         self.modbus_io_sub = rospy.Subscriber(
@@ -81,11 +81,20 @@ class BarcodeToPosition(RComponent):
         # Publish topic with barcode position
         barcode_real_pos = self.barcode_to_real_pos(self.barcode_pos)
         if (self.barcode_pos_updated == True and barcode_real_pos != None):
-            barcode_pos_msg = PointStamped()
+            pose_covariance = 0.00000001
+            rotation_covariance = 0.00000001
+            barcode_pos_msg = Odometry()
             barcode_pos_msg.header.stamp = rospy.Time.now()
-            barcode_pos_msg.point.x = barcode_real_pos
-            barcode_pos_msg.point.y = 0
-            barcode_pos_msg.point.z = 0
+            barcode_pos_msg.header.frame_id = "robot_odom"
+            barcode_pos_msg.child_frame_id = "robot_base_footprint"
+            barcode_pos_msg.pose.pose.position.y = barcode_real_pos
+            barcode_pos_msg.pose.covariance[0] = pose_covariance
+            barcode_pos_msg.pose.covariance[7] = pose_covariance
+            barcode_pos_msg.pose.covariance[14] = pose_covariance
+            barcode_pos_msg.pose.covariance[21] = rotation_covariance
+            barcode_pos_msg.pose.covariance[28] = rotation_covariance
+            barcode_pos_msg.pose.covariance[35] = rotation_covariance
+
             self.position_pub.publish(barcode_pos_msg)
             self.barcode_pos_updated = False
 
