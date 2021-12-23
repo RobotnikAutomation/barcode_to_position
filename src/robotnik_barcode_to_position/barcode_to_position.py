@@ -124,7 +124,7 @@ class BarcodeToPosition(RComponent):
         # Conversion from barcode to real position using the yaml params
         for barcode in self.barcodes["barcodes"]:
             if(barcode_pos_meters >= barcode['barcode_pos'][0] and barcode_pos_meters <= barcode['barcode_pos'][1]):
-                return barcode['initial_real_pos'] + barcode_pos_meters
+                return barcode['initial_real_pos'] + barcode_pos_meters - barcode['barcode_pos'][0]
         return None
 
     def modbus_io_sub_cb(self, msg):
