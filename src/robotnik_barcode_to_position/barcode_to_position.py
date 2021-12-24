@@ -57,8 +57,15 @@ class BarcodeToPosition(RComponent):
         self.barcode_pos_updated = False
 
         self.barcodes = yaml.load(open(self.real_pos_yaml_path))
+        self.padding = self.barcodes["padding"]
 
         return RComponent.init_state(self)
+
+    def standby_state(self):
+        if self.check_barcodes_overlap():
+            self.switch_to_state(State.READY_STATE)
+        else:
+            self.switch_to_state(State.FAILURE_STATE)
 
     def ready_state(self):
         """Actions performed in ready state"""
@@ -123,9 +130,25 @@ class BarcodeToPosition(RComponent):
         barcode_pos_meters = barcode_pos / 1000.0
         # Conversion from barcode to real position using the yaml params
         for barcode in self.barcodes["barcodes"]:
-            if(barcode_pos_meters >= barcode['barcode_pos'][0] and barcode_pos_meters <= barcode['barcode_pos'][1]):
+            if (barcode_pos_meters >= barcode['barcode_pos'][0] - self.padding and barcode_pos_meters <= barcode['barcode_pos'][1] + self.padding):
                 return barcode['initial_real_pos'] + barcode_pos_meters - barcode['barcode_pos'][0]
         return None
+
+    def check_barcodes_overlap(self):
+        # Conversion from barcode to real position using the yaml params
+        rospy.loginfo("Iterating over yaml file to check if any barcodes overlap. Using a padding of %s" % self.padding)
+        for i, barcode1 in enumerate(self.barcodes["barcodes"]):
+            for j, barcode2 in enumerate(self.barcodes["barcodes"][i+1:], i+1):
+                if (barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][1] + self.padding or
+                      barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][1] + self.padding <= barcode1['barcode_pos'][1] + self.padding or
+                      barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][1] + self.padding or
+                      barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][1] + self.padding <= barcode2['barcode_pos'][1] + self.padding):
+                    rospy.logerr("Barcode strips (%f, %f) and (%f, %f) are overlapping (padding: %f)" % \
+                        (barcode1['barcode_pos'][0], barcode1['barcode_pos'][1], \
+                         barcode2['barcode_pos'][0], barcode2['barcode_pos'][1], self.padding))
+                    return False
+        rospy.loginfo("yaml file succesfully checked: Barcodes do not overlap")
+        return True
 
     def modbus_io_sub_cb(self, msg):
         try:
