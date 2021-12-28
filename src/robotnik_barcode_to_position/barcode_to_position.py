@@ -11,6 +11,7 @@ from std_msgs.msg import String
 from robotnik_msgs.msg import StringStamped
 from robotnik_msgs.msg import Registers
 from nav_msgs.msg import Odometry
+import tf
 
 
 class BarcodeToPosition(RComponent):
@@ -30,6 +31,7 @@ class BarcodeToPosition(RComponent):
             '~modbus_io_sub_name', 'robotnik_modbus_io/registers')
         self.real_pos_yaml_path = rospy.get_param(
             '~real_pos_yaml_path', 'barcode_to_real_positions.yaml')
+       
 
     def ros_setup(self):
         """Creates and inits ROS components"""
@@ -58,6 +60,12 @@ class BarcodeToPosition(RComponent):
 
         self.barcodes = yaml.load(open(self.real_pos_yaml_path))
         self.padding = self.barcodes["padding"]
+        if self.barcodes.has_key('initial_yaw'):
+			self.initial_yaw = self.barcodes["initial_yaw"]
+        else:
+			self.initial_yaw = 0.0
+        rospy.loginfo('%s:init_state: padding = %f initial_yaw = %f', self._node_name, self.padding, self.initial_yaw)
+        self.pose_quaternion = tf.transformations.quaternion_from_euler(0, 0, self.initial_yaw)
 
         return RComponent.init_state(self)
 
@@ -95,6 +103,11 @@ class BarcodeToPosition(RComponent):
             barcode_pos_msg.header.frame_id = "robot_odom"
             barcode_pos_msg.child_frame_id = "robot_base_footprint"
             barcode_pos_msg.pose.pose.position.y = barcode_real_pos
+            barcode_pos_msg.pose.pose.orientation.x = self.pose_quaternion[0]
+            barcode_pos_msg.pose.pose.orientation.y = self.pose_quaternion[1]
+            barcode_pos_msg.pose.pose.orientation.z = self.pose_quaternion[2]
+            barcode_pos_msg.pose.pose.orientation.w = self.pose_quaternion[3]
+            
             barcode_pos_msg.pose.covariance[0] = pose_covariance
             barcode_pos_msg.pose.covariance[7] = pose_covariance
             barcode_pos_msg.pose.covariance[14] = pose_covariance
