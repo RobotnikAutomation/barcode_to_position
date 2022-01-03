@@ -1,12 +1,21 @@
 padding: 0.15
 initial_yaw: 0.0
-barcodes:
+
+front_barcodes:
   -
     barcode_pos: [0.0, 1.0]
     initial_real_pos: 0.0 # Offset to apply to the barcode position (meters)
+    table_id: 24
   -
     barcode_pos: [1.2, 2.2]
     initial_real_pos: 1.5
+    table_id: 25
   -
     barcode_pos: [2.4, 3.4]
     initial_real_pos: 3.0
+    table_id: 26
+
+rear_barcodes: # No initial_real_pos required due it is not being used for localization
+  -
+    barcode_pos: [21.0, 23.2]
+    table_id: 123

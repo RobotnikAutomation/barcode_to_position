@@ -7,7 +7,7 @@ from rcomponent.rcomponent import *
 import yaml
 
 # Insert here msg and srv imports:
-from std_msgs.msg import String
+from std_msgs.msg import String, UInt16
 from robotnik_msgs.msg import StringStamped
 from robotnik_msgs.msg import Registers
 from nav_msgs.msg import Odometry
@@ -45,6 +45,10 @@ class BarcodeToPosition(RComponent):
             '~status_stamped', StringStamped, queue_size=10)
         self.position_pub = rospy.Publisher(
             '~barcode_scan_position', Odometry, queue_size=10)
+        self.front_table_id_pub = rospy.Publisher(
+            '~front_table_id', UInt16, queue_size=10)
+        self.rear_table_id_pub = rospy.Publisher(
+            '~rear_table_id', UInt16, queue_size=10)
 
         # Subscriber
         self.modbus_io_sub = rospy.Subscriber(
@@ -55,15 +59,16 @@ class BarcodeToPosition(RComponent):
 
     def init_state(self):
         self.status = String()
-        self.barcode_pos = 0
+        self.front_barcode_pos = 0
+        self.rear_barcode_pos = 0
         self.barcode_pos_updated = False
 
         self.barcodes = yaml.load(open(self.real_pos_yaml_path))
         self.padding = self.barcodes["padding"]
         if self.barcodes.has_key('initial_yaw'):
-			self.initial_yaw = self.barcodes["initial_yaw"]
+            self.initial_yaw = self.barcodes["initial_yaw"]
         else:
-			self.initial_yaw = 0.0
+            self.initial_yaw = 0.0
         rospy.loginfo('%s:init_state: padding = %f initial_yaw = %f', self._node_name, self.padding, self.initial_yaw)
         self.pose_quaternion = tf.transformations.quaternion_from_euler(0, 0, self.initial_yaw)
 
@@ -93,30 +98,43 @@ class BarcodeToPosition(RComponent):
         self.status_pub.publish(self.status)
         self.status_stamped_pub.publish(status_stamped)
 
-        # Publish topic with barcode position
-        barcode_real_pos = self.barcode_to_real_pos(self.barcode_pos)
-        if (self.barcode_pos_updated == True and barcode_real_pos != None):
-            pose_covariance = 0.00000001
-            rotation_covariance = 0.00000001
-            barcode_pos_msg = Odometry()
-            barcode_pos_msg.header.stamp = rospy.Time.now()
-            barcode_pos_msg.header.frame_id = "robot_odom"
-            barcode_pos_msg.child_frame_id = "robot_base_footprint"
-            barcode_pos_msg.pose.pose.position.y = barcode_real_pos
-            barcode_pos_msg.pose.pose.orientation.x = self.pose_quaternion[0]
-            barcode_pos_msg.pose.pose.orientation.y = self.pose_quaternion[1]
-            barcode_pos_msg.pose.pose.orientation.z = self.pose_quaternion[2]
-            barcode_pos_msg.pose.pose.orientation.w = self.pose_quaternion[3]
-            
-            barcode_pos_msg.pose.covariance[0] = pose_covariance
-            barcode_pos_msg.pose.covariance[7] = pose_covariance
-            barcode_pos_msg.pose.covariance[14] = pose_covariance
-            barcode_pos_msg.pose.covariance[21] = rotation_covariance
-            barcode_pos_msg.pose.covariance[28] = rotation_covariance
-            barcode_pos_msg.pose.covariance[35] = rotation_covariance
+        # Publish topic with real barcode position
+        if (self.barcode_pos_updated == True):
 
-            self.position_pub.publish(barcode_pos_msg)
             self.barcode_pos_updated = False
+            barcode_real_pos = self.barcode_to_real_pos(self.front_barcode_pos)
+
+            if (barcode_real_pos != None):
+                pose_covariance = 0.00000001
+                rotation_covariance = 0.00000001
+                barcode_pos_msg = Odometry()
+                barcode_pos_msg.header.stamp = rospy.Time.now()
+                barcode_pos_msg.header.frame_id = "robot_odom"
+                barcode_pos_msg.child_frame_id = "robot_base_footprint"
+                barcode_pos_msg.pose.pose.position.y = barcode_real_pos
+                barcode_pos_msg.pose.pose.orientation.x = self.pose_quaternion[0]
+                barcode_pos_msg.pose.pose.orientation.y = self.pose_quaternion[1]
+                barcode_pos_msg.pose.pose.orientation.z = self.pose_quaternion[2]
+                barcode_pos_msg.pose.pose.orientation.w = self.pose_quaternion[3]
+                
+                barcode_pos_msg.pose.covariance[0] = pose_covariance
+                barcode_pos_msg.pose.covariance[7] = pose_covariance
+                barcode_pos_msg.pose.covariance[14] = pose_covariance
+                barcode_pos_msg.pose.covariance[21] = rotation_covariance
+                barcode_pos_msg.pose.covariance[28] = rotation_covariance
+                barcode_pos_msg.pose.covariance[35] = rotation_covariance
+
+                self.position_pub.publish(barcode_pos_msg)
+
+        # Publish topic with front table
+        front_table_id_msg = UInt16()
+        front_table_id_msg.data = self.barcode_to_table_id(self.front_barcode_pos, "front_barcodes")
+        self.front_table_id_pub.publish(front_table_id_msg)
+
+        # Publish topic with rear table
+        rear_table_id_msg = UInt16()
+        rear_table_id_msg.data = self.barcode_to_table_id(self.rear_barcode_pos, "rear_barcodes")
+        self.rear_table_id_pub.publish(rear_table_id_msg)
 
         return RComponent.ready_state(self)
 
@@ -142,31 +160,44 @@ class BarcodeToPosition(RComponent):
     def barcode_to_real_pos(self, barcode_pos):
         barcode_pos_meters = barcode_pos / 1000.0
         # Conversion from barcode to real position using the yaml params
-        for barcode in self.barcodes["barcodes"]:
-            if (barcode_pos_meters >= barcode['barcode_pos'][0] - self.padding and barcode_pos_meters <= barcode['barcode_pos'][1] + self.padding):
-                return barcode['initial_real_pos'] + barcode_pos_meters - barcode['barcode_pos'][0]
+        if self.barcodes["front_barcodes"] != None:
+            for barcode in self.barcodes["front_barcodes"]:
+                if (barcode_pos_meters >= barcode['barcode_pos'][0] - self.padding and barcode_pos_meters <= barcode['barcode_pos'][1] + self.padding):
+                    return barcode['initial_real_pos'] + barcode_pos_meters - barcode['barcode_pos'][0]
         return None
+
+    def barcode_to_table_id(self, barcode_pos, barcode_type):
+        barcode_pos_meters = barcode_pos / 1000.0
+        # Conversion from barcode to table id using the yaml params
+        if self.barcodes[barcode_type] != None:
+            for barcode in self.barcodes[barcode_type]:
+                if (barcode_pos_meters >= barcode['barcode_pos'][0] - self.padding and barcode_pos_meters <= barcode['barcode_pos'][1] + self.padding):
+                    return barcode['table_id']
+        return 0
 
     def check_barcodes_overlap(self):
         # Conversion from barcode to real position using the yaml params
         rospy.loginfo("Iterating over yaml file to check if any barcodes overlap. Using a padding of %s" % self.padding)
-        for i, barcode1 in enumerate(self.barcodes["barcodes"]):
-            for j, barcode2 in enumerate(self.barcodes["barcodes"][i+1:], i+1):
-                if (barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][1] + self.padding or
-                      barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][1] + self.padding <= barcode1['barcode_pos'][1] + self.padding or
-                      barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][1] + self.padding or
-                      barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][1] + self.padding <= barcode2['barcode_pos'][1] + self.padding):
-                    rospy.logerr("Barcode strips (%f, %f) and (%f, %f) are overlapping (padding: %f)" % \
-                        (barcode1['barcode_pos'][0], barcode1['barcode_pos'][1], \
-                         barcode2['barcode_pos'][0], barcode2['barcode_pos'][1], self.padding))
-                    return False
+        for barcode in ["front_barcodes", "rear_barcodes"]:
+            if self.barcodes[barcode] != None:
+                for i, barcode1 in enumerate(self.barcodes[barcode]):
+                    for j, barcode2 in enumerate(self.barcodes[barcode][i+1:], i+1):
+                        if (barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][1] + self.padding or
+                            barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][1] + self.padding <= barcode1['barcode_pos'][1] + self.padding or
+                            barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][0] - self.padding <= barcode2['barcode_pos'][1] + self.padding or
+                            barcode2['barcode_pos'][0] - self.padding <= barcode1['barcode_pos'][1] + self.padding <= barcode2['barcode_pos'][1] + self.padding):
+                            rospy.logerr("Barcode strips (%f, %f) and (%f, %f) are overlapping (padding: %f)" % \
+                                (barcode1['barcode_pos'][0], barcode1['barcode_pos'][1], \
+                                barcode2['barcode_pos'][0], barcode2['barcode_pos'][1], self.padding))
+                            return False
         rospy.loginfo("yaml file succesfully checked: Barcodes do not overlap")
         return True
 
     def modbus_io_sub_cb(self, msg):
         try:
-            self.barcode_pos = msg.registers[0].value
+            self.front_barcode_pos = msg.registers[0].value
+            self.rear_barcode_pos = msg.registers[2].value
             self.barcode_pos_updated = True
         except:
-            rospy.logerr("Error reading barcode position. Is register 0 publishing?")
+            rospy.logerr("Error reading barcode position. Is register 0 and 2 being published?")
         self.tick_topics_health('modbus_io_sub')
