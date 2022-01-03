@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>robotnik_barcode_to_position</name>
+  <name>barcode_to_position</name>
   <version>0.1.0</version>
-  <description>The robotnik_barcode_to_position package, based on RComponent structure. This node allows to get the real position of the robot from a barcode scanner.</description>
+  <description>The barcode_to_position package, based on RComponent structure. This node allows to get the real position of the robot from a barcode scanner.</description>
 
   <maintainer email="jgomez@robotnik.es">Jose Gomez</maintainer>
 

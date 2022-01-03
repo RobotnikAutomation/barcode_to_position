@@ -9,13 +9,13 @@
 	<!-- Name of the example of a subscriber -->
 	<arg name="modbus_io_sub_name" default="robotnik_modbus_io/registers" />
 	<!-- Path of the barcode_to_real_positions.yaml -->
-	<arg name="real_pos_yaml_path" default="$(find robotnik_barcode_to_position)/config/barcode_to_real_positions.yaml" />
+	<arg name="real_pos_yaml_path" default="$(find barcode_to_position)/config/barcode_to_real_positions.yaml" />
 
 
 	<!--group ns="$(arg id_robot)"-->
 
 		<!-- start BarcodeToPosition node -->
-		<node name="barcode_to_position" pkg="robotnik_barcode_to_position" type="barcode_to_position_node.py" output="screen" respawn="false">
+		<node name="barcode_to_position" pkg="barcode_to_position" type="barcode_to_position_node.py" output="screen" respawn="false">
 			<param name="desired_freq" value="$(arg desired_freq)"/>
 			<param name="modbus_io_sub_name" value="$(arg modbus_io_sub_name)"/>
 			<param name="real_pos_yaml_path" value="$(arg real_pos_yaml_path)"/>

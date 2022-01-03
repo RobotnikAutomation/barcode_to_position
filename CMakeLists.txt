@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(robotnik_barcode_to_position)
+project(barcode_to_position)
 
 add_compile_options(-std=c++11)
 

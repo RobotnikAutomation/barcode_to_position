@@ -1,6 +1,6 @@
-# robotnik_barcode_to_position
+# barcode_to_position
 
-The robotnik_barcode_to_position package, based on RComponent structure. This node allows to get the real position of the robot from a barcode scanner.
+The barcode_to_position package, based on RComponent structure. This node allows to get the real position of the robot from a barcode scanner.
 
 ## Installation
 
