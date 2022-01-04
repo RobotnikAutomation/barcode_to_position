@@ -5,6 +5,7 @@ from rcomponent.rcomponent import *
 
 # Insert here general imports:
 import yaml
+import numpy as np
 
 # Insert here msg and srv imports:
 from std_msgs.msg import String, UInt16
@@ -195,9 +196,15 @@ class BarcodeToPosition(RComponent):
 
     def modbus_io_sub_cb(self, msg):
         try:
-            self.front_barcode_pos = msg.registers[0].value
-            self.rear_barcode_pos = msg.registers[2].value
+            front_low = np.binary_repr(np.int16(msg.registers[0].value), width=16)
+            front_high = np.binary_repr(np.int16(msg.registers[1].value), width=16)
+            self.front_barcode_pos = int(front_high + front_low, 2)
+
+            rear_low = np.binary_repr(np.int16(msg.registers[2].value), width=16)
+            rear_high = np.binary_repr(np.int16(msg.registers[3].value), width=16)
+            self.rear_barcode_pos = int(rear_high + rear_low, 2)
+
             self.barcode_pos_updated = True
         except:
-            rospy.logerr("Error reading barcode position. Is register 0 and 2 being published?")
+            rospy.logerr("Error reading barcode position. Is register 0 to 3 being published?")
         self.tick_topics_health('modbus_io_sub')
