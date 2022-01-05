@@ -8,7 +8,7 @@ import yaml
 import numpy as np
 
 # Insert here msg and srv imports:
-from std_msgs.msg import String, UInt16
+from std_msgs.msg import String, Int16
 from robotnik_msgs.msg import StringStamped
 from robotnik_msgs.msg import Registers
 from nav_msgs.msg import Odometry
@@ -47,9 +47,9 @@ class BarcodeToPosition(RComponent):
         self.position_pub = rospy.Publisher(
             '~barcode_scan_position', Odometry, queue_size=10)
         self.front_table_id_pub = rospy.Publisher(
-            '~front_table_id', UInt16, queue_size=10)
+            '~front_table_id', Int16, queue_size=10)
         self.rear_table_id_pub = rospy.Publisher(
-            '~rear_table_id', UInt16, queue_size=10)
+            '~rear_table_id', Int16, queue_size=10)
 
         # Subscriber
         self.modbus_io_sub = rospy.Subscriber(
@@ -128,12 +128,12 @@ class BarcodeToPosition(RComponent):
                 self.position_pub.publish(barcode_pos_msg)
 
         # Publish topic with front table
-        front_table_id_msg = UInt16()
+        front_table_id_msg = Int16()
         front_table_id_msg.data = self.barcode_to_table_id(self.front_barcode_pos, "front_barcodes")
         self.front_table_id_pub.publish(front_table_id_msg)
 
         # Publish topic with rear table
-        rear_table_id_msg = UInt16()
+        rear_table_id_msg = Int16()
         rear_table_id_msg.data = self.barcode_to_table_id(self.rear_barcode_pos, "rear_barcodes")
         self.rear_table_id_pub.publish(rear_table_id_msg)
 
